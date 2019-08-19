@@ -2,7 +2,7 @@
 vb网页过滤元素的函数，超级好用
 
 ## 请将下面的代码放到一个bas模块中
-```
+```vb
 Option Explicit
 
 Public Declare Function SafeArrayGetDim Lib "oleaut32.dll " (ByRef saArray() As Any) As Long
