@@ -1,8 +1,10 @@
 # getElementsByAttributes
 vb网页过滤元素的函数，超级好用
 
-##请将下面的代码放到一个bas模块中
+## 请将下面的代码放到一个bas模块中
 ```
+Option Explicit
+
 Public Declare Function SafeArrayGetDim Lib "oleaut32.dll " (ByRef saArray() As Any) As Long
 
 '名称：getElementsByAttributes
@@ -74,5 +76,23 @@ End Function
 '简略的调用方法
 Public Function g(WebBrowser1 As Object, ByVal strAttributes As String) As Variant
     g = getElementsByAttributes(WebBrowser1, strAttributes)
+End Function
+'根据运算符检查条件是否符合
+Private Function isConditionOk(ByVal strTagValue$, ByVal strCondition$, ByVal strValueForCheck$) As Boolean
+    If strCondition = "=" Then
+        isConditionOk = (strTagValue = strValueForCheck)
+    ElseIf strCondition = "!=" Or strCondition = "<>" Then
+        isConditionOk = (strTagValue <> strValueForCheck)
+    ElseIf strCondition = "^=" Then '选取开头为strValueForCheck的
+        isConditionOk = (Left(strTagValue, Len(strValueForCheck)) = strValueForCheck)
+    ElseIf strCondition = "$=" Then '选取末尾为strValueForCheck的
+        isConditionOk = (Right(strTagValue, Len(strValueForCheck)) = strValueForCheck)
+    ElseIf strCondition = "*=" Then '选取包含strValueForCheck的
+        isConditionOk = (InStr(strTagValue, strValueForCheck) > 0)
+    ElseIf strCondition = "|=" Then '选取值为strValueForCheck或者值为strValueForCheck前缀的，即strValueForCheck后面加个-
+        isConditionOk = (InStr(strTagValue, strValueForCheck) > 0 Or InStr(strTagValue, strValueForCheck & "-") > 0)
+    ElseIf strCondition = "~=" Then '选取属性值用空格分隔的值中包含给定值的元素
+        isConditionOk = (InStr(" " & strTagValue & " ", " " & strValueForCheck & " ") > 0)
+    End If
 End Function
 ```
