@@ -1,0 +1,101 @@
+Option Explicit
+
+Private Declare Function SafeArrayGetDim Lib "oleaut32.dll " (ByRef saArray() As Any) As Long
+
+'名称：getElementsByAttributes
+'功能：根据一个或多个条件对dom对象所有元素进行过滤得到目标元素
+'参数：WebBrowser1，WebBrowser类型，要处理的webbrowser
+'      strAttributes，string型，内容为属性列表，多项的话用逗号隔开，
+'返回：如果有匹配到的结果那么返回的就是html元素对象数组，用户需要执行判断使用
+'范例：getElementsByAttributes(WebBrowser1,"id='kw'")(0).value="vb" '设置百度搜索框内容为vb
+'      getElementsByAttributes(WebBrowser1,"value='百度一下',type='submit'")(0).click '点击百度的搜索按钮
+'      getElementsByAttributes(WebBrowser1,"tagname='input',value^='百度'")(0).click '得到文本开头为“百度”的按钮并执行点击
+'      Dim v
+'      For Each v In getElementsByAttributes(WebBrowser1, "tagname=img,src<>''")
+'          Print v.src
+'      Next
+
+'作者：sysdzw
+'日期：23:53 2017-1-17
+Public Function getElementsByAttributes(WebBrowser1 As Object, ByVal strAttributes As String) As Variant
+    Dim vTag As Object
+    Dim i&, strTiaojians$, strTagValue$, isElementOk As Boolean, intElement%, vrt()
+    Dim reg As Object
+    Dim matchs As Object
+    Dim strAttrName As String, strAttrValue As String
+
+    Set reg = CreateObject("vbscript.regExp")
+    reg.Global = True
+    reg.IgnoreCase = True
+    reg.MultiLine = True
+    reg.Pattern = "([a-z\dA-Z-_.]+)([!=<>^$*|~]+)(['""]?)([^,]*)\3"
+    Set matchs = reg.Execute(strAttributes)
+
+    For Each vTag In WebBrowser1.Document.All
+        isElementOk = True
+        For i = 0 To matchs.Count - 1 '循环判断strAttributes中的多个条件，只有都符合才能返回true，如果有一个不符合就返回false并且退出其他条件的判断
+            strAttrName = LCase(matchs(i).SubMatches(0))
+            If strAttrName = "classname" Then strAttrName = "class"'统一化，因为vTag.getattribute("class")才能取到值，但是如果没有class就会返回null，所以下面还是需要处理下
+            If strAttrName = "tagname" Then
+                If Not isConditionOk(LCase(vTag.tagname), matchs(i).SubMatches(1), LCase(matchs(i).SubMatches(3))) Then
+                    isElementOk = False
+                    Exit For
+                End If
+            ElseIf strAttrName = "innerhtml" Then
+                If Not isConditionOk(LCase(vTag.innerhtml), matchs(i).SubMatches(1), LCase(matchs(i).SubMatches(3))) Then
+                    isElementOk = False
+                    Exit For
+                End If
+            ElseIf strAttrName = "innertext" Then
+                If Not isConditionOk(LCase(vTag.innertext), matchs(i).SubMatches(1), LCase(matchs(i).SubMatches(3))) Then
+                    isElementOk = False
+                    Exit For
+                End If
+            Else
+                If IsNull(vTag.getattribute(strAttrName)) Then '如果没有设置属性就会返回null，比如没有class或name，但是有时我们也会用到class=''
+                    strTagValue = ""
+                Else
+                    strTagValue = vTag.getattribute(strAttrName)
+                End If
+                
+                If Not isConditionOk(strTagValue, matchs(i).SubMatches(1), matchs(i).SubMatches(3)) Then
+                    isElementOk = False
+                    Exit For
+                End If
+            End If
+        Next
+
+        If isElementOk Then
+            ReDim Preserve vrt(intElement)
+            Set vrt(intElement) = vTag
+            intElement = intElement + 1
+        End If
+    Next
+    If SafeArrayGetDim(vrt) = 0 Then
+        getElementsByAttributes = Split("", "")
+    Else
+        getElementsByAttributes = vrt
+    End If
+End Function
+'简略的调用方式
+Public Function g(WebBrowser1 As Object, ByVal strAttributes As String) As Variant
+    g = getElementsByAttributes(WebBrowser1, strAttributes)
+End Function
+'根据运算符检查条件是否符合
+Private Function isConditionOk(ByVal strTagValue$, ByVal strCondition$, ByVal strValueForCheck$) As Boolean
+    If strCondition = "=" Then
+        isConditionOk = (strTagValue = strValueForCheck)
+    ElseIf strCondition = "!=" Or strCondition = "<>" Then
+        isConditionOk = (strTagValue <> strValueForCheck)
+    ElseIf strCondition = "^=" Then '选取开头为strValueForCheck的
+        isConditionOk = (Left(strTagValue, Len(strValueForCheck)) = strValueForCheck)
+    ElseIf strCondition = "$=" Then '选取末尾为strValueForCheck的
+        isConditionOk = (Right(strTagValue, Len(strValueForCheck)) = strValueForCheck)
+    ElseIf strCondition = "*=" Then '选取包含strValueForCheck的
+        isConditionOk = (InStr(strTagValue, strValueForCheck) > 0)
+    ElseIf strCondition = "|=" Then '选取值为strValueForCheck或者值为strValueForCheck前缀的，即strValueForCheck后面加个-
+        isConditionOk = (InStr(strTagValue, strValueForCheck) > 0 Or InStr(strTagValue, strValueForCheck & "-") > 0)
+    ElseIf strCondition = "~=" Then '选取属性值用空格分隔的值中包含给定值的元素
+        isConditionOk = (InStr(" " & strTagValue & " ", " " & strValueForCheck & " ") > 0)
+    End If
+End Function
