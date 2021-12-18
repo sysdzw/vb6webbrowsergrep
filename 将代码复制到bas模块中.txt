@@ -1,3 +1,5 @@
+Option Explicit
+
 Private Declare Function SafeArrayGetDim Lib "oleaut32.dll " (ByRef saArray() As Any) As Long
 
 '名称：getElementsByAttributes
@@ -33,7 +35,7 @@ Public Function getElementsByAttributes(WebBrowser1 As Object, ByVal strAttribut
         isElementOk = True
         For i = 0 To matchs.Count - 1 '循环判断strAttributes中的多个条件，只有都符合才能返回true，如果有一个不符合就返回false并且退出其他条件的判断
             strAttrName = LCase(matchs(i).SubMatches(0))
-            If strAttrName = "classname" Then strAttrName = "class"
+            If strAttrName = "class" Then strAttrName = "classname"'统一化，因为getattribute只认classname
             If strAttrName = "tagname" Then
                 If Not isConditionOk(LCase(vTag.tagname), matchs(i).SubMatches(1), LCase(matchs(i).SubMatches(3))) Then
                     isElementOk = False
@@ -49,21 +51,7 @@ Public Function getElementsByAttributes(WebBrowser1 As Object, ByVal strAttribut
                     isElementOk = False
                     Exit For
                 End If
-            ElseIf strAttrName = "class" Then
-                strAttrValue = "NULL"
-                If Not IsNull(vTag.getattribute("class")) Then
-                    strAttrValue = vTag.getattribute("class")
-                ElseIf Not IsNull(vTag.getattribute("classname")) Then
-                    strAttrValue = vTag.getattribute("classname")
-                End If
-                If strAttrValue = "NULL" Then
-                    isElementOk = False
-                    Exit For
-                ElseIf Not (isConditionOk(strAttrValue, matchs(i).SubMatches(1), LCase(matchs(i).SubMatches(3))) Or isConditionOk(strAttrValue, matchs(i).SubMatches(1), LCase(matchs(i).SubMatches(3)))) Then
-                    isElementOk = False
-                    Exit For
-                End If
-            ElseIf IsNull(vTag.getattribute(strAttrName)) Then
+            ElseIf IsNull(vTag.getattribute(strAttrName)) Then '防止用户写错属性名称导致异常'
                 isElementOk = False
                 Exit For
             ElseIf Not isConditionOk(vTag.getattribute(strAttrName), matchs(i).SubMatches(1), matchs(i).SubMatches(3)) Then
