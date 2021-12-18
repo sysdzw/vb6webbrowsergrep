@@ -19,7 +19,7 @@ Private Declare Function SafeArrayGetDim Lib "oleaut32.dll " (ByRef saArray() As
 '日期：23:53 2017-1-17
 Public Function getElementsByAttributes(WebBrowser1 As Object, ByVal strAttributes As String) As Variant
     Dim vTag As Object
-    Dim i&, strTiaojians$, isElementOk As Boolean, intElement%, vrt()
+    Dim i&, strTiaojians$, strTagValue$, isElementOk As Boolean, intElement%, vrt()
     Dim reg As Object
     Dim matchs As Object
     Dim strAttrName As String, strAttrValue As String
@@ -35,7 +35,7 @@ Public Function getElementsByAttributes(WebBrowser1 As Object, ByVal strAttribut
         isElementOk = True
         For i = 0 To matchs.Count - 1 '循环判断strAttributes中的多个条件，只有都符合才能返回true，如果有一个不符合就返回false并且退出其他条件的判断
             strAttrName = LCase(matchs(i).SubMatches(0))
-            If strAttrName = "class" Then strAttrName = "classname"'统一化，因为getattribute只认classname
+            If strAttrName = "classname" Then strAttrName = "class"'统一化，因为vTag.getattribute("class")才能取到值，但是如果没有class就会返回null，所以下面还是需要处理下
             If strAttrName = "tagname" Then
                 If Not isConditionOk(LCase(vTag.tagname), matchs(i).SubMatches(1), LCase(matchs(i).SubMatches(3))) Then
                     isElementOk = False
@@ -51,12 +51,17 @@ Public Function getElementsByAttributes(WebBrowser1 As Object, ByVal strAttribut
                     isElementOk = False
                     Exit For
                 End If
-            ElseIf IsNull(vTag.getattribute(strAttrName)) Then '防止用户写错属性名称导致异常'
-                isElementOk = False
-                Exit For
-            ElseIf Not isConditionOk(vTag.getattribute(strAttrName), matchs(i).SubMatches(1), matchs(i).SubMatches(3)) Then
-                isElementOk = False
-                Exit For
+            Else
+                If IsNull(vTag.getattribute(strAttrName)) Then '如果没有设置属性就会返回null，比如没有class或name，但是有时我们也会用到class=''
+                    strTagValue = ""
+                Else
+                    strTagValue = vTag.getattribute(strAttrName)
+                End If
+                
+                If Not isConditionOk(strTagValue, matchs(i).SubMatches(1), matchs(i).SubMatches(3)) Then
+                    isElementOk = False
+                    Exit For
+                End If
             End If
         Next
 
